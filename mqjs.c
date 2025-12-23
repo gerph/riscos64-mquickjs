@@ -36,7 +36,36 @@
 #include <fcntl.h>
 
 #include "cutils.h"
+#ifndef __riscos
 #include "readline_tty.h"
+#else
+#include "swis.h"
+#define COLOR_NONE            0
+#define COLOR_BLACK           1
+#define COLOR_RED             2
+#define COLOR_GREEN           3
+#define COLOR_YELLOW          4
+#define COLOR_BLUE            5
+#define COLOR_MAGENTA         6
+#define COLOR_CYAN            7
+#define COLOR_WHITE           8
+#define COLOR_GRAY            9
+#define COLOR_BRIGHT_RED     10
+#define COLOR_BRIGHT_GREEN   11
+#define COLOR_BRIGHT_YELLOW  12
+#define COLOR_BRIGHT_BLUE    13
+#define COLOR_BRIGHT_MAGENTA 14
+#define COLOR_BRIGHT_CYAN    15
+#define COLOR_BRIGHT_WHITE   16
+
+const char *term_colors[17] = {
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    ""
+};
+#endif
 #include "mquickjs.h"
 
 static uint8_t *load_file(const char *filename, int *plen);
@@ -78,6 +107,14 @@ static int64_t get_time_ms(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (ts.tv_nsec / 1000000);
 }
+#elif defined(__riscos)
+static int64_t get_time_ms(void)
+{
+    struct timeval tv;
+    tv.tv_sec = time(NULL);
+    tv.tv_usec = 0; /* FIXME: Something a little more accurate would be nice */
+    return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+}
 #else
 static int64_t get_time_ms(void)
 {
@@ -90,7 +127,12 @@ static int64_t get_time_ms(void)
 static JSValue js_date_now(JSContext *ctx, JSValue *this_val, int argc, JSValue *argv)
 {
     struct timeval tv;
+#if defined(__riscos)
+    tv.tv_sec = time(NULL);
+    tv.tv_usec = 0; /* FIXME: Something a little more accurate would be nice */
+#else
     gettimeofday(&tv, NULL);
+#endif
     return JS_NewInt64(ctx, (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000));
 }
 
@@ -213,9 +255,17 @@ static void run_timers(JSContext *ctx)
         if (!has_timer)
             break;
         if (min_delay > 0) {
+#ifdef __riscos
+            uint32_t start = clock();
+            uint32_t delaycs = min_delay / 10;
+            do {
+                _swix(OS_Byte, _IN(0), 19); /* Wait for VSync */
+            } while (clock() - start <= delaycs);
+#else
             ts.tv_sec = min_delay / 1000;
             ts.tv_nsec = (min_delay % 1000) * 1000000;
             nanosleep(&ts, NULL);
+#endif
         }
     }
 }
@@ -428,6 +478,7 @@ static void compile_file(const char *filename, const char *outfilename,
 
 /* repl */
 
+#ifndef __riscos
 static ReadlineState readline_state;
 static uint8_t readline_cmd_buf[256];
 static uint8_t readline_kill_buf[256];
@@ -563,6 +614,22 @@ static void repl_run(JSContext *ctx)
         run_timers(ctx);
     }
 }
+#else
+static void repl_run(JSContext *ctx)
+{
+    char buffer[1024];
+    char *cmd;
+
+    for(;;) {
+        printf("mqjs > ");
+        cmd = fgets(buffer, sizeof(buffer), stdin);
+        if (!cmd)
+            break;
+        eval_buf(ctx, cmd, "<cmdline>", TRUE, 0);
+        run_timers(ctx);
+    }
+}
+#endif
 
 static void help(void)
 {
@@ -596,7 +663,11 @@ int main(int argc, const char **argv)
     int i, parse_flags;
     BOOL force_32bit, allow_bytecode;
     
+#ifdef __riscos
+    mem_size = 1024 * 1024;
+#else
     mem_size = 16 << 20;
+#endif
     dump_memory = 0;
     parse_flags = 0;
     force_32bit = FALSE;
@@ -731,7 +802,12 @@ int main(int argc, const char **argv)
         JS_SetLogFunc(ctx, js_log_func);
         {
             struct timeval tv;
+#if defined(__riscos)
+            tv.tv_sec = time(NULL);
+            tv.tv_usec = 0; /* FIXME: Something a little more accurate would be nice */
+#else
             gettimeofday(&tv, NULL);
+#endif
             JS_SetRandomSeed(ctx, ((uint64_t)tv.tv_sec << 32) ^ tv.tv_usec);
         }
 
