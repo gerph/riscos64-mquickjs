@@ -65,6 +65,29 @@ const char *term_colors[17] = {
     "", "", "", "",
     ""
 };
+
+#define MONOTONIC_CLKS_PER_SEC (100)
+uint32_t clock_monotonic(void)
+{
+    _kernel_swi_regs regs;
+    if (_kernel_swi(OS_ReadMonotonicTime, &regs, &regs))
+        return 0;
+    return regs.r[0];
+}
+
+int gettimeofday(struct timeval *tv, void *tzp)
+{
+    static time_t timeofdaybase = 0;
+    uint32_t now = clock_monotonic();
+    if (timeofdaybase == 0) {
+        timeofdaybase = time(NULL) - (now / MONOTONIC_CLKS_PER_SEC);
+    }
+    /* FIXME: Timezone pointer is ignored */
+    tv->tv_sec = timeofdaybase + (now / MONOTONIC_CLKS_PER_SEC);
+    tv->tv_usec = (now % MONOTONIC_CLKS_PER_SEC) * (1000000 / MONOTONIC_CLKS_PER_SEC);
+
+    return 0;
+}
 #endif
 #include "mquickjs.h"
 
@@ -110,10 +133,13 @@ static int64_t get_time_ms(void)
 #elif defined(__riscos)
 static int64_t get_time_ms(void)
 {
-    struct timeval tv;
-    tv.tv_sec = time(NULL);
-    tv.tv_usec = 0; /* FIXME: Something a little more accurate would be nice */
-    return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+    static int64_t timeofdaybase = 0;
+    int64_t now = clock_monotonic();
+    if (timeofdaybase == 0) {
+        timeofdaybase = ((uint64_t)time(NULL)) * MONOTONIC_CLKS_PER_SEC - now;
+    }
+    int64_t cs = timeofdaybase + now;
+    return cs * (1000 / MONOTONIC_CLKS_PER_SEC);
 }
 #else
 static int64_t get_time_ms(void)
@@ -127,12 +153,7 @@ static int64_t get_time_ms(void)
 static JSValue js_date_now(JSContext *ctx, JSValue *this_val, int argc, JSValue *argv)
 {
     struct timeval tv;
-#if defined(__riscos)
-    tv.tv_sec = time(NULL);
-    tv.tv_usec = 0; /* FIXME: Something a little more accurate would be nice */
-#else
     gettimeofday(&tv, NULL);
-#endif
     return JS_NewInt64(ctx, (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000));
 }
 
@@ -802,12 +823,7 @@ int main(int argc, const char **argv)
         JS_SetLogFunc(ctx, js_log_func);
         {
             struct timeval tv;
-#if defined(__riscos)
-            tv.tv_sec = time(NULL);
-            tv.tv_usec = 0; /* FIXME: Something a little more accurate would be nice */
-#else
             gettimeofday(&tv, NULL);
-#endif
             JS_SetRandomSeed(ctx, ((uint64_t)tv.tv_sec << 32) ^ tv.tv_usec);
         }
 
