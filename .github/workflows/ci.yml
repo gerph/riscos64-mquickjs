@@ -16,7 +16,7 @@ on:
   #  branches: ["*"]
 
 jobs:
-  build-riscos:
+  build-riscos64:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     container:
@@ -63,14 +63,44 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: RISCOS-build
+          name: RISCOS64-build
           path: ${{ steps.version.outputs.leafname }}
         # The artifact that is downloadable from the Actions is actually a zip of the artifacts
         # that we supply. So it will be a regular Zip file containing a RISC OS Zip file.
 
+  test-riscos64:
+    runs-on: ubuntu-latest
+    container:
+      image: gerph/riscos-build:latest-64bit
+    needs:
+      - build-riscos64
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      - name: Download built RISC OS binary
+        uses: actions/download-artifact@v4
+        with:
+          name: RISCOS64-build
+
+      - name: Decompress built binary
+        run: |
+          cd RISCOS
+          riscos-unzip ../"${{ needs.build-riscos64.outputs.leafname }}"
+
+      - name: Run on the build service
+        run: |
+          cd RISCOS
+          zip /tmp/source-archive.zip MQuickJS,ff8 smoketest.js .robuild.yaml
+          riscos-build-online -A aarch64 -i /tmp/source-archive.zip -a off -t 60
+
   # The release only triggers when the thing that was pushed was a tag starting with 'v'
   release:
-    needs: build-riscos
+    needs:
+      - build-riscos64
+      - test-riscos64
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -79,7 +109,7 @@ jobs:
       - name: Download built RISC OS binary
         uses: actions/download-artifact@v4
         with:
-          name: RISCOS-build
+          name: RISCOS64-build
 
       - name: Create Release
         id: create_release
@@ -87,5 +117,5 @@ jobs:
         with:
           prerelease: false
           draft: true
-          artifacts: "${{ needs.build-riscos.outputs.leafname }}"
+          artifacts: "${{ needs.build-riscos64.outputs.leafname }}"
           artifactContentType: application/zip

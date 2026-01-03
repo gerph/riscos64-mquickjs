@@ -1,7 +1,7 @@
 %YAML 1.0
 ---
 
-# RISC OS build file to execute on https://build.riscos.online/
+# Example .robuild.yml file
 
 # Source is optional (NYI), and should be a URL to source the content from
 #source: <url>
@@ -16,28 +16,22 @@ jobs:
       "Sys$Environment": ROBuild
       "BUILD32": 1
 
-      # Faster building using the host toolchain
-      "Alias$AMU": "HostAMU %*0"
-
     # Directory to change to before running script
     #dir: <working directory>
 
     # Commands which should be executed to perform the build.
     # The build will terminate if any command returns a non-0 return code or an error.
     script:
+      - echo *** Simple smoketest starts...
 
-      - echo
-      - echo *** Build the component ***
-      - amu -f Makefile TARGET  
+      - MQuickJS smoketest/js
 
-
-      - echo
-      - echo *** SUCCESS ***
+      - echo *** Simple smoketests complete
 
     # Outputs from the build are defined in artifacts
     # These are a list of artifacts to report directories or files.
     # Only a single item is currently supported.
-    artifacts:
+#    artifacts:
       # Each element of the artifacts should have a path key, which gives the file or
       # directory to return.
-      - path: Artifacts
+#      - path: Artifacts
