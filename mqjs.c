@@ -293,6 +293,7 @@ static void run_timers(JSContext *ctx)
 
 #include "mqjs_stdlib.h"
 
+#ifndef __riscos
 #define STYLE_DEFAULT    COLOR_BRIGHT_GREEN
 #define STYLE_COMMENT    COLOR_WHITE
 #define STYLE_STRING     COLOR_BRIGHT_CYAN
@@ -305,6 +306,7 @@ static void run_timers(JSContext *ctx)
 #define STYLE_ERROR      COLOR_RED
 #define STYLE_RESULT     COLOR_BRIGHT_WHITE
 #define STYLE_ERROR_MSG  COLOR_BRIGHT_RED
+#endif
 
 static uint8_t *load_file(const char *filename, int *plen)
 {
@@ -344,11 +346,15 @@ static void dump_error(JSContext *ctx)
 {
     JSValue obj;
     obj = JS_GetException(ctx);
+#ifndef __riscos
     fprintf(stderr, "%s", term_colors[STYLE_ERROR_MSG]);
+#endif
     js_log_err_flag++;
     JS_PrintValueF(ctx, obj, JS_DUMP_LONG);
     js_log_err_flag--;
+#ifndef __riscos
     fprintf(stderr, "%s\n", term_colors[COLOR_NONE]);
+#endif
 }
 
 static int eval_buf(JSContext *ctx, const char *eval_str, const char *filename, BOOL is_repl, int parse_flags)
@@ -370,9 +376,13 @@ static int eval_buf(JSContext *ctx, const char *eval_str, const char *filename, 
         return 1;
     } else {
         if (is_repl) {
+#ifndef __riscos
             printf("%s", term_colors[STYLE_RESULT]);
+#endif
             JS_PrintValueF(ctx, val, JS_DUMP_LONG);
+#ifndef __riscos
             printf("%s\n", term_colors[COLOR_NONE]);
+#endif
         }
         return 0;
     }
