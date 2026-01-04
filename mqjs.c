@@ -321,6 +321,10 @@ static uint8_t *load_file(const char *filename, int *plen)
     buf_len = ftell(f);
     fseek(f, 0, SEEK_SET);
     buf = malloc(buf_len + 1);
+    if (buf == NULL) {
+        fclose(f);
+        return NULL;
+    }
     fread(buf, 1, buf_len, f);
     buf[buf_len] = '\0';
     fclose(f);
@@ -383,6 +387,10 @@ static int eval_file(JSContext *ctx, const char *filename,
     JSValue val;
     
     buf = load_file(filename, &buf_len);
+    if (buf == NULL) {
+        fprintf(stderr, "Failed to allocate memory to load %s\n", filename);
+        exit(1);
+    }
     if (allow_bytecode && JS_IsBytecode(buf, buf_len)) {
         if (JS_RelocateBytecode(ctx, buf, buf_len)) {
             fprintf(stderr, "Could not relocate bytecode\n");
@@ -451,10 +459,18 @@ static void compile_file(const char *filename, const char *outfilename,
        defined. The JSContext must be discarded once the compilation
        is done. */
     mem_buf = malloc(mem_size);
+    if (mem_buf == NULL) {
+        fprintf(stderr, "Failed to allocate memory (%u bytes) for JS context\n", mem_size);
+        exit(1);
+    }
     ctx = JS_NewContext2(mem_buf, mem_size, &js_stdlib, TRUE);
     JS_SetLogFunc(ctx, js_log_func);
 
     eval_str = (char *)load_file(filename, NULL);
+    if (eval_str == NULL) {
+        fprintf(stderr, "Failed to allocate memory to load %s\n", filename);
+        exit(1);
+    }
 
     val = JS_Parse(ctx, eval_str, strlen(eval_str), filename, parse_flags);
     free(eval_str);
@@ -819,6 +835,10 @@ int main(int argc, const char **argv)
                      parse_flags, force_32bit);
     } else {
         mem_buf = malloc(mem_size);
+        if (mem_buf == NULL) {
+            fprintf(stderr, "Failed to allocate memory for JS context\n");
+            exit(1);
+        }
         ctx = JS_NewContext(mem_buf, mem_size, &js_stdlib);
         JS_SetLogFunc(ctx, js_log_func);
         {
