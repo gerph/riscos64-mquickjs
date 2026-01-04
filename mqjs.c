@@ -652,7 +652,7 @@ static void repl_run(JSContext *ctx)
 }
 #endif
 
-static void help(void)
+static void help(int rc)
 {
     printf("MicroQuickJS" "\n"
            "usage: mqjs [options] [file [args]]\n"
@@ -666,7 +666,7 @@ static void help(void)
            "-o FILE               save the bytecode to FILE\n"
            "-m32                  force 32 bit bytecode output (use with -o)\n"
            "-b  --allow-bytecode  allow bytecode in input file\n");
-    exit(1);
+    exit(rc);
 }
 
 int main(int argc, const char **argv)
@@ -716,7 +716,7 @@ int main(int argc, const char **argv)
             if (opt)
                 arg++;
             if (opt == 'h' || opt == '?' || !strcmp(longopt, "help")) {
-                help();
+                help(0);
                 continue;
             }
             if (opt == 'e' || !strcmp(longopt, "eval")) {
@@ -806,7 +806,7 @@ int main(int argc, const char **argv)
             } else {
                 fprintf(stderr, "qjs: unknown option '--%s'\n", longopt);
             }
-            help();
+            help(1);
         }
     }
 
