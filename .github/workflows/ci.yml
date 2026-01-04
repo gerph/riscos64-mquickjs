@@ -49,8 +49,8 @@ jobs:
       - name: Give the output a versioned name
         id: version
         run: |
-          if [[ -f VersionNum ]] ; then
-              version=$(sed '/MajorVersion / ! d ; s/.*MajorVersion *"\(.*\)"/\1/' VersionNum)
+          if [ -f RISCOS/VersionNum ] ; then
+              version=$(sed '/MajorVersion / ! d ; s/.*MajorVersion *"\(.*\)"/\1/' RISCOS/VersionNum)
           else
               version=$(git rev-parse --short HEAD)
           fi

@@ -668,9 +668,18 @@ static void repl_run(JSContext *ctx)
 }
 #endif
 
+#ifdef __riscos
+#include "VersionNum"
+#endif
+
 static void help(int rc)
 {
-    printf("MicroQuickJS" "\n"
+    printf(
+#ifdef __riscos
+           "MicroQuickJS (RISC OS: " Module_FullVersionAndDate ")\n"
+#else
+           "MicroQuickJS" "\n"
+#endif
            "usage: mqjs [options] [file [args]]\n"
            "-h  --help            list options\n"
            "-e  --eval EXPR       evaluate EXPR\n"
