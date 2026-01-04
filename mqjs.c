@@ -701,7 +701,7 @@ int main(int argc, const char **argv)
     BOOL force_32bit, allow_bytecode;
     
 #ifdef __riscos
-    mem_size = 1024 * 1024;
+    mem_size = 300 * 1024; /* Only 300K by default; assume that the default is a 640K application space, and the build is about 250K */
 #else
     mem_size = 16 << 20;
 #endif
