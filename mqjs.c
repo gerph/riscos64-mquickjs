@@ -354,6 +354,8 @@ static void dump_error(JSContext *ctx)
     js_log_err_flag--;
 #ifndef __riscos
     fprintf(stderr, "%s\n", term_colors[COLOR_NONE]);
+#else
+    fprintf(stderr, "\n", term_colors[COLOR_NONE]);
 #endif
 }
 
@@ -382,6 +384,8 @@ static int eval_buf(JSContext *ctx, const char *eval_str, const char *filename, 
             JS_PrintValueF(ctx, val, JS_DUMP_LONG);
 #ifndef __riscos
             printf("%s\n", term_colors[COLOR_NONE]);
+#else
+            printf("\n");
 #endif
         }
         return 0;
